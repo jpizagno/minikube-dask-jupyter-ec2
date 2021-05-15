@@ -7,7 +7,7 @@ provider "aws" {
 
 resource "aws_security_group" "minikube-dask-jupyter" { 
   name        =   "minikube-dask-jupyter"
-  description = "minikube-dask-jupyter github branch ${var.github_branch}"
+  description = "minikube-dask-jupyter"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -42,7 +42,7 @@ resource "aws_instance" "ec2_minikube" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      host        = aws_instance.ec2_minikube_started.public_ip
+      host        = aws_instance.ec2_minikube.public_ip
       agent       = false
       private_key = file("${var.key_path}${var.key_name}.pem")
     }
@@ -68,8 +68,8 @@ resource "aws_instance" "ec2_minikube" {
         "echo \"deb https://baltocdn.com/helm/stable/debian/ all main\" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list",
         "sudo apt -y update",
         "sudo apt-get -y install helm",
-        # start minikube 
-        "nohup minikube start --driver=docker > minikube.log 2>&1 &",
+        # start minikube, as user yelper because we do not want to run docker as root
+        "sudo -u yelper bash -c 'minikube start --driver=docker'",
     ]
   }
 }

@@ -15,12 +15,12 @@ def _change_to_ipv6(file:str , ipv6: str ):
 
 
 if __name__ == '__main__':
-    description_call = "Parameters for Github, AWS keys, and IP.  Example call:  python3 deploy.py  AKIAIG???????TFJQA  7VzZa???FMCMyrbnA  password jpizagno feature/automate-deployment  46.94.7.38 jim-gastrofix  /Users/jamespizagno/AWS/ "
+    description_call = "Parameters for Github, AWS keys, and IP.  Example call:  python3 deploy.py  AKIAIG???????TFJQA  7VzZa???FMCMyrbnA  46.94.7.38 jim-file  /Users/jamespizagno/AWS/ "
     parser = argparse.ArgumentParser(description=description_call)
     parser.add_argument('access_key', help='AWS Access key, or AWSAccessKeyId in zour *key.csv ')
     parser.add_argument('secret_key', help='AWS Secret key, or AWSSecretKey in zour *key.csv ')
     parser.add_argument('user_ip_address', help="Your IP i.e. '46.94.7.38' or 2003:cb:ef20:fb78:c594:17bd:cbbd:d27e")
-    parser.add_argument('key_name', help="Name of your AWS Pem file key. so for jpizagno-huginns.pem enter 'jpizagno-huginns' ")
+    parser.add_argument('key_name', help="Name of your AWS Pem file key. so for jpizagno-fil.pem enter 'jpizagno-file' ")
     parser.add_argument('key_path', help="The full file path to your AWS Pem file. i.e. /Users/jpizagno/AWS/ ")
    
     args = parser.parse_args()
