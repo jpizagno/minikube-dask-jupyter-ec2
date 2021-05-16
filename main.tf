@@ -5,10 +5,65 @@ provider "aws" {
   region     = var.region     # from variables.tf
 }
 
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/27"
+
+  tags = {
+    Name = "minikube-dask-jupyter"
+    billing = "minikube-dask-jupyter"
+  }
+}
+
+resource "aws_subnet" "public-subnet" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "10.0.0.0/28"
+  map_public_ip_on_launch = "true"
+  availability_zone       = "eu-central-1a"
+
+  tags = {
+    Name = "minikube-dask-jupyter"
+    billing = "minikube-dask-jupyter"
+  }
+}
+
+
+resource "aws_internet_gateway" "internet-gw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "minikube-dask-jupyter"
+    billing = "minikube-dask-jupyter"
+  }
+}
+
+resource "aws_route_table" "public-rt" {
+  vpc_id = aws_vpc.main.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.internet-gw.id
+  }
+
+  tags = {
+    Name = "minikube-dask-jupyter"
+    billing = "minikube-dask-jupyter"
+  }
+}
+
+resource "aws_route_table_association" "public-rta" {
+  subnet_id      = aws_subnet.public-subnet.id
+  route_table_id = aws_route_table.public-rt.id
+
+}
+
 resource "aws_security_group" "minikube-dask-jupyter" { 
   name        =   "minikube-dask-jupyter"
   description = "minikube-dask-jupyter"
-  vpc_id      = var.vpc_id
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name = "minikube-dask-jupyter"
+    billing = "minikube-dask-jupyter"
+  }
 
   ingress {
     from_port   = 22
@@ -21,7 +76,7 @@ resource "aws_security_group" "minikube-dask-jupyter" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+     cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
@@ -31,7 +86,14 @@ resource "aws_instance" "ec2_minikube" {
   ami                    = "ami-0b1deee75235aa4bb"
   instance_type          = "t3a.xlarge"
   key_name               = var.key_name
+  subnet_id                = aws_subnet.public-subnet.id
   vpc_security_group_ids = [aws_security_group.minikube-dask-jupyter.id]
+  associate_public_ip_address = true
+
+  tags = {
+    Name = "minikube-dask-jupyter"
+    billing = "minikube-dask-jupyter"
+  }
 
   root_block_device {
       volume_size = 20
@@ -69,7 +131,7 @@ resource "aws_instance" "ec2_minikube" {
         "sudo apt -y update",
         "sudo apt-get -y install helm",
         # start minikube, as user yelper because we do not want to run docker as root
-        "sudo -u yelper bash -c 'minikube start --driver=docker'",
+        "sudo -H -u yelper bash -c 'minikube start --driver=docker'",
     ]
   }
 }
@@ -82,7 +144,7 @@ resource "time_sleep" "wait_300_seconds" {
 }
 
 
-resource "null_resource" "ec2_minikube_command_runner" {
+resource "null_resource" "ec2_start_dask" {
   depends_on = [time_sleep.wait_300_seconds]
 
   # start help-dask, which starts DASK Pods (web UI, workers, and notebook)
@@ -96,21 +158,40 @@ resource "null_resource" "ec2_minikube_command_runner" {
     }
     inline = [
         # start minkube dashboard
-        "nohup minikube dashboard > dashboard.log 2>&1 &",
+        "sudo -H -u yelper bash -c 'nohup minikube dashboard > /tmp/dashboard.log 2>&1 &'",
         # install DASK
-        "helm repo add dask https://helm.dask.org/",
-        "helm repo update",
-        "helm install \"dask\" dask/dask",
-        # run k8s port forwarding for DASK UI and JUPYTER
-        "export DASK_SCHEDULER=\"127.0.0.1\"",                                                             
-        "export DASK_SCHEDULER_UI_IP=\"127.0.0.1\"",                                                       
-        "export DASK_SCHEDULER_PORT=7080",                                                               
-        "export DASK_SCHEDULER_UI_PORT=7081",                                                           
-        "nohup kubectl port-forward --namespace default svc/dask-scheduler $DASK_SCHEDULER_PORT:8786 > DASK_SCHEDULER_PORT.log 2>&1 &",     
-        "nohup kubectl port-forward --namespace default svc/dask-scheduler $DASK_SCHEDULER_UI_PORT:80 > DASK_SCHEDULER_UI_PORT.log 2>&1 &",  
-        "export JUPYTER_NOTEBOOK_IP=\"127.0.0.1\"",                                                       
-        "export JUPYTER_NOTEBOOK_PORT=7082",                                                            
-        "nohup kubectl port-forward --namespace default svc/dask-jupyter $JUPYTER_NOTEBOOK_PORT:80 > JUPYTER_NOTEBOOK_PORT.log 2>&1 &",
+        "sudo -H -u yelper bash -c 'helm repo add dask https://helm.dask.org/'",
+        "sudo -H -u yelper bash -c 'helm repo update'",
+        "sudo -H -u yelper bash -c 'helm install \"dask\" dask/dask'",
+    ]
+  }
+}
+
+# this just waits 10 minutes for DASK to get up and running
+resource "time_sleep" "wait_600_seconds_dask" {
+  depends_on = [null_resource.ec2_start_dask]
+
+  create_duration = "600s"
+}
+
+resource "null_resource" "ec2_port_forward_dask" {
+  depends_on = [time_sleep.wait_600_seconds_dask]
+
+  # start help-dask, which starts DASK Pods (web UI, workers, and notebook)
+  provisioner "remote-exec" {
+    connection {
+      type        = "ssh"
+      user        = "ubuntu"
+      host        = aws_instance.ec2_minikube.public_ip
+      agent       = false
+      private_key = file("${var.key_path}${var.key_name}.pem")
+    }
+    inline = [
+        # run k8s port forwarding for DASK UI and JUPYTER                                                       
+        "sudo -H -u yelper bash -c 'nohup kubectl port-forward --namespace default svc/dask-scheduler 7080:8786 > /tmp/DASK_SCHEDULER_PORT.log 2>&1 &'",     
+        "sudo -H -u yelper bash -c 'nohup kubectl port-forward --namespace default svc/dask-scheduler 7081:80 > /tmp/DASK_SCHEDULER_UI_PORT.log 2>&1 &'",                                                             
+        "sudo -H -u yelper bash -c 'nohup kubectl port-forward --namespace default svc/dask-jupyter 7082:80 > /tmp/JUPYTER_NOTEBOOK_PORT.log 2>&1 &'",
+        "cat /tmp/JUPYTER_NOTEBOOK_PORT.log",
     ]
   }
 }
