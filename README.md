@@ -8,7 +8,7 @@ Here is a [link](https://www.dabbleofdevops.com/blog/deploy-and-scale-your-dask-
 ## Build/Run
 The build time takes at least 15 minutes, because Terraform waits 15 minutes for Pods to start. The first 5 minutes, Terraform waits for minkube to start, and then the nexrt 10 minutes is waiting for DASK Pods to start. DASK has to wait for minikube to be up and running, and the port forwarding has to wait for the DASK Pods to be running.
 
-To run one needs to run the python script and provide the AWSAccessKeyId, AWSSecretKey, user's IP address (so you can ssh in later), the name of your pem file (wihtout .pem extension), and the local location of that pem file.
+Run Terraform using the python script; and provide the AWSAccessKeyId, AWSSecretKey, user's IP address (so you can ssh in later), the name of your pem file (wihtout .pem extension), and the local location of that pem file.
 
 So if your AWSAccessKeyId='AKIAI.....FJQA' , AWSSecretKey='7VzZaTGV7......CMyrbnA', your IP=87.161.221.155, and your pem file is called my-secret.pem, and is located at /home/you/AWS/my-secret.pem, then run like this:
 ```
@@ -18,7 +18,7 @@ shell-local%  python3 deploy.py AKIAI.....FJQA \
     my-secret \
     /home/you/AWS/
 ```
-Then it takes at least 10 minutes to complete.
+Then it takes at least 15 minutes to complete.
 
 
 
@@ -112,3 +112,4 @@ yelper@ip-10-0-0-12:~$ minikube status
 ## TODO
 1. Setup ELB so user does not have to port forward
 2. Add persistence volume claims
+3. Setup triggers for the Pods to be available so one does not have to wait so long
