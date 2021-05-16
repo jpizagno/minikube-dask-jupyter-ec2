@@ -1,6 +1,8 @@
 # Minikube running DASK on EC2
 
-This will run DESK in minikube on a AWS-EC2 instance (ubuntu20, t3a.xlarge). The terraform script (main.tf) will install docker, minkube, helm, DASK, and then start DASK (web UI and Jupyter).  It creates a user called "yelper" that runs minkube, because one does not want to run dockerized apps as root. 
+This will run DASK in minikube on a AWS-EC2 instance (ubuntu20, t3a.xlarge). The terraform script (main.tf) will install docker, minkube, helm, DASK, and then start DASK (web UI and Jupyter).  It creates a user called "yelper" that runs minkube, because one does not want to run dockerized apps as root. 
+
+Here is a [link](https://www.dabbleofdevops.com/blog/deploy-and-scale-your-dask-cluster-with-kubernetes) for running DASK via Helm.
 
 
 ## Build/Run
